@@ -208,6 +208,17 @@ function drawProps(ctx, def, g) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(def.crateLabel || 'PASAR', c.x + c.w / 2, c.y + c.h / 2);
   }
+  // rocks — grey boulders, solid cover like crates
+  for (const r of (def.rocks || [])) {
+    ctx.fillStyle = '#4a5563';
+    roundRect(ctx, r.x, r.y, r.w, r.h, 14); ctx.fill();
+    ctx.fillStyle = '#6b7787';
+    roundRect(ctx, r.x + 6, r.y + 5, r.w - 12, (r.h - 10) * 0.45, 10); ctx.fill();
+    ctx.strokeStyle = '#39424e';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(r.x + r.w * 0.3, r.y + r.h * 0.55); ctx.lineTo(r.x + r.w * 0.55, r.y + r.h * 0.82); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r.x + r.w * 0.62, r.y + r.h * 0.5); ctx.lineTo(r.x + r.w * 0.78, r.y + r.h * 0.72); ctx.stroke();
+  }
   // walls — old plaster with a warm top edge
   for (const w of def.walls) {
     ctx.fillStyle = '#2c3d5c';
@@ -377,16 +388,17 @@ function drawHud(ctx, g) {
 function drawFieldNotes(ctx, g) {
   const x = 14, y = 66, w = 196;
   ctx.fillStyle = 'rgba(8,16,30,.82)';
-  roundRect(ctx, x, y, w, 152, 8); ctx.fill();
+  roundRect(ctx, x, y, w, 176, 8); ctx.fill();
   ctx.strokeStyle = 'rgba(255,214,120,.35)';
   ctx.lineWidth = 1;
-  roundRect(ctx, x, y, w, 152, 8); ctx.stroke();
+  roundRect(ctx, x, y, w, 176, 8); ctx.stroke();
   label(ctx, 'FIELD NOTES', x + 12, y + 16, { size: 12, color: '#ffd678' });
   const rows = [
     ['YELLOW CONE', 'seen — fill = caught'],
     ['TALL GRASS', 'hide here, unseen'],
     ['COIN (CLICK)', 'lures guards away'],
     ['SHIFT', 'crouch: slow, quiet'],
+    ['ROCK', 'blocks sight & steps'],
     ['RED = ALARM', 'run for shadow'],
   ];
   rows.forEach(([a, b], i) => {
@@ -445,12 +457,47 @@ function drawTitle(ctx, g) {
   // night-market backdrop: dark floor, lamps, a patrol cone
   ctx.fillStyle = '#0d1729';
   ctx.fillRect(0, 0, VIEW.w, VIEW.h);
-  for (const l of [{ x: 300, y: 300 }, { x: 980, y: 300 }, { x: 640, y: 640 }]) {
+  for (const l of [{ x: 300, y: 300 }, { x: 980, y: 300 }, { x: 640, y: 640 }, { x: 150, y: 700 }, { x: 1130, y: 700 }]) {
     const grad = ctx.createRadialGradient(l.x, l.y, 8, l.x, l.y, 220);
     grad.addColorStop(0, 'rgba(255,196,110,.28)');
     grad.addColorStop(1, 'rgba(255,196,110,0)');
     ctx.fillStyle = grad;
     ctx.beginPath(); ctx.arc(l.x, l.y, 220, 0, Math.PI * 2); ctx.fill();
+  }
+  // bottom dressing: grass, crates and rocks fill the lower frame
+  for (const r of [{ x: 90, y: 690, w: 140, h: 70 }, { x: 1050, y: 690, w: 140, h: 70 }]) {
+    ctx.fillStyle = 'rgba(46,110,64,.5)';
+    roundRect(ctx, r.x, r.y, r.w, r.h, 10); ctx.fill();
+    ctx.strokeStyle = '#7cc46a';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < r.w / 10; i++) {
+      const x = r.x + 6 + i * 10;
+      const y = r.y + r.h - 5;
+      const lean = ((i * 7) % 11) - 5;
+      const hgt = 18 + ((i * 13) % 14);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + lean * 0.4, y - hgt * 0.6, x + lean, y - hgt);
+      ctx.stroke();
+    }
+  }
+  for (const c of [{ x: 300, y: 700, w: 90, h: 60 }, { x: 890, y: 700, w: 90, h: 60 }]) {
+    ctx.fillStyle = '#6e4f2a';
+    roundRect(ctx, c.x, c.y, c.w, c.h, 5); ctx.fill();
+    ctx.strokeStyle = '#8a6a3d';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(c.x + 4, c.y + 4, c.w - 8, c.h - 8);
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x + c.w, c.y + c.h); ctx.stroke();
+    ctx.fillStyle = '#d9b06a';
+    ctx.font = '700 11px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('PASAR', c.x + c.w / 2, c.y + c.h / 2);
+  }
+  for (const r of [{ x: 540, y: 710, w: 80, h: 55 }, { x: 660, y: 710, w: 80, h: 55 }]) {
+    ctx.fillStyle = '#4a5563';
+    roundRect(ctx, r.x, r.y, r.w, r.h, 14); ctx.fill();
+    ctx.fillStyle = '#6b7787';
+    roundRect(ctx, r.x + 6, r.y + 5, r.w - 12, (r.h - 10) * 0.45, 10); ctx.fill();
   }
   drawCone(ctx, 180, 620, 0, 300, GUARD_FOV, [], '#ffe9a8', 0.16);
   drawPerson(ctx, 180, 620, 0, '#3d5a8a', '#d9c27a', {});

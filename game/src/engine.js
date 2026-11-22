@@ -115,7 +115,7 @@ export function loadLevel(g, i) {
 }
 
 export function solidsOf(def) {
-  return [...def.walls, ...def.crates, ...def.shelves];
+  return [...def.walls, ...def.crates, ...def.shelves, ...(def.rocks || [])];
 }
 
 export function inGrass(def, x, y) {
