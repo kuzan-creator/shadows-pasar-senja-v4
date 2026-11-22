@@ -129,12 +129,15 @@ export function render(ctx, g) {
   if (g.screen === 'victory') drawVictory(ctx, g);
 }
 
-function drawFloor(ctx, def) {
+function drawFloor(ctx, def, flat) {
   // FRESH floor: warm light sandstone, deliberately bright — unlike the
   // dark floors of the top ranks. Two light sand tones checker the tiles
-  // so the board still has texture under the cones.
+  // so the board still has texture under the cones. flat=true (title
+  // backdrop) skips the checker + grid so the backdrop stays smooth and
+  // the title PNG stays small, while props and lamplight still show.
   ctx.fillStyle = '#e7d9b8';
   ctx.fillRect(0, VIEW.hud, VIEW.w, VIEW.floor - VIEW.hud);
+  if (!flat) {
   for (let i = 0; i < VIEW.w / 40; i++) {
     for (let j = 0; j < (VIEW.floor - VIEW.hud) / 40; j++) {
       if ((i + j) % 2) {
@@ -148,6 +151,7 @@ function drawFloor(ctx, def) {
   ctx.lineWidth = 1;
   for (let x = 0; x <= VIEW.w; x += 40) { ctx.beginPath(); ctx.moveTo(x, VIEW.hud); ctx.lineTo(x, VIEW.floor); ctx.stroke(); }
   for (let y = VIEW.hud; y <= VIEW.floor; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VIEW.w, y); ctx.stroke(); }
+  }
   // checkered hall (museum) — light marble, stronger contrast than the sand
   if (def.checkered) {
     const c = def.checkered;
@@ -481,7 +485,7 @@ function drawTitle(ctx, g) {
   ctx.fillStyle = '#e7d9b8';
   ctx.fillRect(0, 0, VIEW.w, VIEW.h);
   const def = LEVELS[0];
-  drawFloor(ctx, def);
+  drawFloor(ctx, def, true); // flat backdrop: props + lamplight show, no checker noise
   drawProps(ctx, def, g);
   // two patrol cones from level 1, frozen mid-sweep
   const solids = solidsOf(def);
@@ -490,8 +494,15 @@ function drawTitle(ctx, g) {
     { x: def.guards[1].path[0][0], y: def.guards[1].path[0][1], dir: Math.PI / 2 },
   ];
   for (const c of cones) drawCone(ctx, c.x, c.y, c.dir, GUARD_RANGE, GUARD_FOV, solids, '#f0ad2e', 0.3);
-  // sand veil: dims the world so the dark title text stays readable
-  ctx.fillStyle = 'rgba(231,217,184,.72)';
+  // dusk veil: a warm night-market amber over the world, so the dark title
+  // text stays readable while the backdrop still shows through
+  ctx.fillStyle = 'rgba(186,146,90,.70)';
+  ctx.fillRect(0, 0, VIEW.w, VIEW.h);
+  // soft night vignette: darker at the edges, clear in the middle
+  const vg = ctx.createRadialGradient(VIEW.w / 2, VIEW.h / 2, 260, VIEW.w / 2, VIEW.h / 2, 760);
+  vg.addColorStop(0, 'rgba(46,28,12,0)');
+  vg.addColorStop(1, 'rgba(46,28,12,.30)');
+  ctx.fillStyle = vg;
   ctx.fillRect(0, 0, VIEW.w, VIEW.h);
   drawPerson(ctx, 180, 620, 0, '#3d5a8a', '#d9c27a', {});
   label(ctx, 'BIMO', 180, 596, { size: 11, color: '#cfe0f5', align: 'center', bg: 'rgba(20,28,40,.8)' });
