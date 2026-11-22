@@ -2,7 +2,7 @@
 // lamplight pools, bookshelves, tall grass, vision cones, the HUD and the
 // in-picture annotations that teach the judge how the stealth works.
 import { VIEW, GUARD_RANGE, GUARD_FOV, castRay, solidsOf, inGrass, inLamp, levelScore } from './engine.js';
-import { SCOPE } from './levels.js';
+import { LEVELS, SCOPE } from './levels.js';
 
 const INK = '#e8ecf4';
 const DIM = '#8fa3c0';
@@ -25,9 +25,10 @@ function drawCone(ctx, x, y, ang, range, fov, solids, color, alpha) {
   ctx.globalAlpha = alpha;
   ctx.fill();
   ctx.globalAlpha = 1;
+  // Strong edge: on the bright floor the cone needs a firm outline to read.
   ctx.strokeStyle = color;
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.9;
+  ctx.lineWidth = 2.5;
   ctx.stroke();
   ctx.globalAlpha = 1;
 }
@@ -129,40 +130,51 @@ export function render(ctx, g) {
 }
 
 function drawFloor(ctx, def) {
-  ctx.fillStyle = '#0d1729';
+  // FRESH floor: warm light sandstone, deliberately bright — unlike the
+  // dark floors of the top ranks. Two light sand tones checker the tiles
+  // so the board still has texture under the cones.
+  ctx.fillStyle = '#e7d9b8';
   ctx.fillRect(0, VIEW.hud, VIEW.w, VIEW.floor - VIEW.hud);
-  // subtle floor tiles
-  ctx.strokeStyle = 'rgba(120,150,200,.06)';
+  for (let i = 0; i < VIEW.w / 40; i++) {
+    for (let j = 0; j < (VIEW.floor - VIEW.hud) / 40; j++) {
+      if ((i + j) % 2) {
+        ctx.fillStyle = '#dcc99e';
+        ctx.fillRect(i * 40, VIEW.hud + j * 40, 40, 40);
+      }
+    }
+  }
+  // soft grid lines
+  ctx.strokeStyle = 'rgba(122,92,46,.20)';
   ctx.lineWidth = 1;
   for (let x = 0; x <= VIEW.w; x += 40) { ctx.beginPath(); ctx.moveTo(x, VIEW.hud); ctx.lineTo(x, VIEW.floor); ctx.stroke(); }
   for (let y = VIEW.hud; y <= VIEW.floor; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VIEW.w, y); ctx.stroke(); }
-  // checkered hall (museum)
+  // checkered hall (museum) — light marble, stronger contrast than the sand
   if (def.checkered) {
     const c = def.checkered;
     for (let i = 0; i < c.w / 40; i++) {
       for (let j = 0; j < c.h / 40; j++) {
-        ctx.fillStyle = (i + j) % 2 ? '#1b2c4a' : '#24395e';
+        ctx.fillStyle = (i + j) % 2 ? '#cdb488' : '#f3ecd2';
         ctx.fillRect(c.x + i * 40, c.y + j * 40, 40, 40);
       }
     }
   }
-  // warm lamplight pools on the dark floor
+  // warm lamplight pools — deeper amber so the glow still reads on sand
   for (const l of def.lamps) {
     const grad = ctx.createRadialGradient(l.x, l.y, 8, l.x, l.y, l.r);
-    grad.addColorStop(0, 'rgba(255,196,110,.34)');
-    grad.addColorStop(0.6, 'rgba(255,176,90,.12)');
-    grad.addColorStop(1, 'rgba(255,176,90,0)');
+    grad.addColorStop(0, 'rgba(255,168,52,.42)');
+    grad.addColorStop(0.6, 'rgba(255,168,52,.16)');
+    grad.addColorStop(1, 'rgba(255,168,52,0)');
     ctx.fillStyle = grad;
     ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill();
   }
 }
 
 function drawProps(ctx, def, g) {
-  // tall grass — hiding cover
+  // tall grass — hiding cover (deeper green so it pops on the pale sand)
   for (const r of def.grass) {
-    ctx.fillStyle = 'rgba(46,110,64,.5)';
+    ctx.fillStyle = 'rgba(38,96,54,.6)';
     roundRect(ctx, r.x, r.y, r.w, r.h, 10); ctx.fill();
-    ctx.strokeStyle = '#7cc46a';
+    ctx.strokeStyle = '#58b04a';
     ctx.lineWidth = 2;
     for (let i = 0; i < r.w / 10; i++) {
       const x = r.x + 6 + i * 10;
@@ -195,7 +207,7 @@ function drawProps(ctx, def, g) {
     ctx.fillStyle = '#ffd98a';
     ctx.beginPath(); ctx.arc(l.x, l.y, 4.5, 0, Math.PI * 2); ctx.fill();
   }
-  // crates
+  // crates — plain wood boxes; only the museum crates carry a label (ARCA)
   for (const c of def.crates) {
     ctx.fillStyle = '#6e4f2a';
     roundRect(ctx, c.x, c.y, c.w, c.h, 5); ctx.fill();
@@ -203,37 +215,39 @@ function drawProps(ctx, def, g) {
     ctx.lineWidth = 2;
     ctx.strokeRect(c.x + 4, c.y + 4, c.w - 8, c.h - 8);
     ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x + c.w, c.y + c.h); ctx.stroke();
-    ctx.fillStyle = '#d9b06a';
-    ctx.font = '700 11px system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(def.crateLabel || 'PASAR', c.x + c.w / 2, c.y + c.h / 2);
+    if (def.crateLabel) {
+      ctx.fillStyle = '#d9b06a';
+      ctx.font = '700 11px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(def.crateLabel, c.x + c.w / 2, c.y + c.h / 2);
+    }
   }
   // rocks — grey boulders, solid cover like crates
   for (const r of (def.rocks || [])) {
-    ctx.fillStyle = '#4a5563';
+    ctx.fillStyle = '#5f6873';
     roundRect(ctx, r.x, r.y, r.w, r.h, 14); ctx.fill();
-    ctx.fillStyle = '#6b7787';
+    ctx.fillStyle = '#8b939e';
     roundRect(ctx, r.x + 6, r.y + 5, r.w - 12, (r.h - 10) * 0.45, 10); ctx.fill();
-    ctx.strokeStyle = '#39424e';
+    ctx.strokeStyle = '#3d454f';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(r.x + r.w * 0.3, r.y + r.h * 0.55); ctx.lineTo(r.x + r.w * 0.55, r.y + r.h * 0.82); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(r.x + r.w * 0.62, r.y + r.h * 0.5); ctx.lineTo(r.x + r.w * 0.78, r.y + r.h * 0.72); ctx.stroke();
   }
-  // walls — old plaster with a warm top edge
+  // walls — warm dark wood-brown, solid against the pale sand
   for (const w of def.walls) {
-    ctx.fillStyle = '#2c3d5c';
+    ctx.fillStyle = '#5b4632';
     roundRect(ctx, w.x, w.y, w.w, w.h, 3); ctx.fill();
-    ctx.fillStyle = '#3d547e';
+    ctx.fillStyle = '#7d6244';
     ctx.fillRect(w.x, w.y, w.w, 4);
   }
-  // tripwires
+  // tripwires — deep gold so the line reads on sand
   for (const tw of def.tripwires) {
-    ctx.strokeStyle = tw.tripped ? '#ff5a4e' : '#ffcf4d';
+    ctx.strokeStyle = tw.tripped ? '#ff5a4e' : '#d99a1f';
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
     ctx.beginPath(); ctx.moveTo(tw.x1, tw.y1); ctx.lineTo(tw.x2, tw.y2); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = '#ffcf4d';
+    ctx.fillStyle = '#d99a1f';
     ctx.beginPath(); ctx.arc(tw.x1, tw.y1, 4, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(tw.x2, tw.y2, 4, 0, Math.PI * 2); ctx.fill();
   }
@@ -267,14 +281,17 @@ function drawLoot(ctx, def, g) {
     ctx.translate(t.x, t.y);
     ctx.scale(pulse, pulse);
     const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, 44);
-    grad.addColorStop(0, 'rgba(255,214,120,.5)');
-    grad.addColorStop(1, 'rgba(255,214,120,0)');
+    grad.addColorStop(0, 'rgba(242,176,46,.55)');
+    grad.addColorStop(1, 'rgba(242,176,46,0)');
     ctx.fillStyle = grad;
     ctx.beginPath(); ctx.arc(0, 0, 44, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ffd678';
+    ctx.fillStyle = '#f2b02e';
     ctx.beginPath();
     ctx.moveTo(0, -16); ctx.lineTo(11, 0); ctx.lineTo(0, 16); ctx.lineTo(-11, 0);
     ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#8a6a10';
+    ctx.lineWidth = 2;
+    ctx.stroke();
     ctx.fillStyle = '#7a5a10';
     ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -282,11 +299,14 @@ function drawLoot(ctx, def, g) {
   }
   for (const v of def.valuables) {
     if (v.taken) continue;
-    ctx.fillStyle = '#e8b34f';
+    ctx.fillStyle = '#e8a91f';
     ctx.beginPath(); ctx.arc(v.x, v.y, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#8a6a10';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
     ctx.fillStyle = '#fff3c4';
     ctx.beginPath(); ctx.arc(v.x, v.y, 4, 0, Math.PI * 2); ctx.fill();
-    label(ctx, `$${v.value}`, v.x, v.y - 18, { size: 11, color: '#ffd98a', align: 'center' });
+    label(ctx, `$${v.value}`, v.x, v.y - 18, { size: 11, color: '#ffd98a', align: 'center', bg: 'rgba(30,20,0,.8)' });
   }
 }
 
@@ -302,17 +322,18 @@ function drawCoins(ctx, g) {
 
 function drawGuards(ctx, g, solids) {
   for (const gd of g.guards) {
-    const col = gd.state === 'alert' ? '#ff4d3d' : gd.state === 'suspicious' ? '#ffc93d' : '#ffe9a8';
-    const alpha = gd.state === 'alert' ? 0.34 : gd.state === 'suspicious' ? 0.3 : 0.2;
+    // Deep amber cones: pale yellow vanishes on the bright sand.
+    const col = gd.state === 'alert' ? '#ff4d3d' : gd.state === 'suspicious' ? '#f5b81e' : '#f0ad2e';
+    const alpha = gd.state === 'alert' ? 0.44 : gd.state === 'suspicious' ? 0.4 : 0.36;
     drawCone(ctx, gd.x, gd.y, gd.dir, GUARD_RANGE, GUARD_FOV, solids, col, alpha);
   }
   for (const gd of g.guards) {
     const body = gd.state === 'alert' ? '#b23a2e' : gd.state === 'suspicious' ? '#a8873a' : '#3d5a8a';
     drawPerson(ctx, gd.x, gd.y, gd.dir, body, '#d9c27a', { step: gd.step });
-    // name + state mark
-    label(ctx, gd.name, gd.x, gd.y - 26, { size: 11, color: '#cfe0f5', align: 'center' });
-    if (gd.state === 'alert') label(ctx, '!', gd.x, gd.y - 40, { size: 20, color: '#ff5a4e', align: 'center' });
-    else if (gd.state === 'suspicious') label(ctx, '?', gd.x, gd.y - 40, { size: 18, color: '#ffc93d', align: 'center' });
+    // name + state mark — dark pill so pale text reads on the bright floor
+    label(ctx, gd.name, gd.x, gd.y - 26, { size: 11, color: '#cfe0f5', align: 'center', bg: 'rgba(20,28,40,.8)' });
+    if (gd.state === 'alert') label(ctx, '!', gd.x, gd.y - 56, { size: 20, color: '#ff5a4e', align: 'center', bg: 'rgba(20,28,40,.8)' });
+    else if (gd.state === 'suspicious') label(ctx, '?', gd.x, gd.y - 56, { size: 18, color: '#ffc93d', align: 'center', bg: 'rgba(20,28,40,.8)' });
     if (gd.alert > 4 && gd.state !== 'alert') {
       ctx.fillStyle = 'rgba(0,0,0,.6)';
       ctx.fillRect(gd.x - 18, gd.y + 18, 36, 5);
@@ -325,20 +346,20 @@ function drawGuards(ctx, g, solids) {
 function drawDog(ctx, g, solids) {
   const d = g.dog;
   if (!d) return;
-  drawCone(ctx, d.x, d.y, d.dir, d.range, 0.9, solids, '#ff9a3d', d.state === 'alert' ? 0.3 : 0.16);
+  drawCone(ctx, d.x, d.y, d.dir, d.range, 0.9, solids, '#ff9a3d', d.state === 'alert' ? 0.38 : 0.26);
   drawPerson(ctx, d.x, d.y, d.dir, '#6a4a2a', '#c9a06a', { dog: true, step: d.step });
-  label(ctx, d.name, d.x, d.y - 26, { size: 11, color: '#ffd9a8', align: 'center' });
-  if (d.state === 'alert') label(ctx, '!', d.x, d.y - 40, { size: 20, color: '#ff5a4e', align: 'center' });
+  label(ctx, d.name, d.x, d.y - 26, { size: 11, color: '#ffd9a8', align: 'center', bg: 'rgba(20,28,40,.8)' });
+  if (d.state === 'alert') label(ctx, '!', d.x, d.y - 56, { size: 20, color: '#ff5a4e', align: 'center', bg: 'rgba(20,28,40,.8)' });
 }
 
 function drawCameras(ctx, g, solids) {
   for (const cam of g.cameras) {
-    drawCone(ctx, cam.x, cam.y, cam.ang, cam.range, 0.55, solids, '#ff6a5a', cam.alert > 40 ? 0.3 : 0.16);
+    drawCone(ctx, cam.x, cam.y, cam.ang, cam.range, 0.55, solids, '#ff6a5a', cam.alert > 40 ? 0.4 : 0.28);
     ctx.fillStyle = '#3a3f4a';
     ctx.beginPath(); ctx.arc(cam.x, cam.y, 10, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = cam.alert > 40 ? '#ff4d3d' : '#37d67a';
     ctx.beginPath(); ctx.arc(cam.x, cam.y, 4, 0, Math.PI * 2); ctx.fill();
-    label(ctx, 'CAM', cam.x, cam.y - 22, { size: 10, color: '#ffb3a8', align: 'center' });
+    label(ctx, 'CAM', cam.x, cam.y - 22, { size: 10, color: '#ffb3a8', align: 'center', bg: 'rgba(20,28,40,.8)' });
   }
 }
 
@@ -347,14 +368,14 @@ function drawPlayer(ctx, g) {
   const hidden = inGrass(g.level, p.x, p.y) || p.crouch;
   drawPerson(ctx, p.x, p.y, p.dir, hidden ? '#2f7a4a' : '#2e6fb2', '#ffd34d', { crouch: p.crouch, step: p.moving ? g.time : 0 });
   label(ctx, 'YOU', p.x, p.y - 26, { size: 11, color: '#ffffff', align: 'center', bg: 'rgba(10,30,60,.8)' });
-  if (hidden) label(ctx, p.crouch ? 'CROUCHED' : 'HIDDEN', p.x, p.y + 26, { size: 10, color: '#8fe8a8', align: 'center' });
-  if (inLamp(g.level, p.x, p.y)) label(ctx, 'IN THE LIGHT!', p.x, p.y + 26, { size: 10, color: '#ffb3a8', align: 'center' });
+  if (hidden) label(ctx, p.crouch ? 'CROUCHED' : 'HIDDEN', p.x, p.y + 26, { size: 10, color: '#8fe8a8', align: 'center', bg: 'rgba(10,30,20,.75)' });
+  if (inLamp(g.level, p.x, p.y)) label(ctx, 'IN THE LIGHT!', p.x, p.y + 26, { size: 10, color: '#ffb3a8', align: 'center', bg: 'rgba(40,10,10,.75)' });
 }
 
 function drawRings(ctx, g) {
   for (const r of g.rings) {
-    ctx.strokeStyle = `rgba(255,211,77,${Math.max(0, r.ttl)})`;
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(232,169,31,${Math.max(0, r.ttl)})`;
+    ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
   }
 }
@@ -412,10 +433,11 @@ function drawToast(ctx, g) {
 }
 
 function pointerLine(ctx, x1, y1, x2, y2, text, tx, ty) {
-  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  // Dark leader line: white vanishes on the bright sand.
+  ctx.strokeStyle = 'rgba(46,32,14,.92)';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#33241a';
   ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI * 2); ctx.fill();
   label(ctx, text, tx, ty, { size: 14, color: '#fff', align: 'center', bg: 'rgba(8,14,26,.85)' });
 }
@@ -454,65 +476,36 @@ function dim(ctx) {
 }
 
 function drawTitle(ctx, g) {
-  // night-market backdrop: dark floor, lamps, a patrol cone
-  ctx.fillStyle = '#0d1729';
+  // Living backdrop: level 1 rendered dimmed behind the title, so the
+  // title stands on the game world instead of an empty room.
+  ctx.fillStyle = '#e7d9b8';
   ctx.fillRect(0, 0, VIEW.w, VIEW.h);
-  for (const l of [{ x: 300, y: 300 }, { x: 980, y: 300 }, { x: 640, y: 640 }, { x: 150, y: 700 }, { x: 1130, y: 700 }]) {
-    const grad = ctx.createRadialGradient(l.x, l.y, 8, l.x, l.y, 220);
-    grad.addColorStop(0, 'rgba(255,196,110,.28)');
-    grad.addColorStop(1, 'rgba(255,196,110,0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(l.x, l.y, 220, 0, Math.PI * 2); ctx.fill();
-  }
-  // bottom dressing: grass, crates and rocks fill the lower frame
-  for (const r of [{ x: 90, y: 690, w: 140, h: 70 }, { x: 1050, y: 690, w: 140, h: 70 }]) {
-    ctx.fillStyle = 'rgba(46,110,64,.5)';
-    roundRect(ctx, r.x, r.y, r.w, r.h, 10); ctx.fill();
-    ctx.strokeStyle = '#7cc46a';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < r.w / 10; i++) {
-      const x = r.x + 6 + i * 10;
-      const y = r.y + r.h - 5;
-      const lean = ((i * 7) % 11) - 5;
-      const hgt = 18 + ((i * 13) % 14);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.quadraticCurveTo(x + lean * 0.4, y - hgt * 0.6, x + lean, y - hgt);
-      ctx.stroke();
-    }
-  }
-  for (const c of [{ x: 300, y: 700, w: 90, h: 60 }, { x: 890, y: 700, w: 90, h: 60 }]) {
-    ctx.fillStyle = '#6e4f2a';
-    roundRect(ctx, c.x, c.y, c.w, c.h, 5); ctx.fill();
-    ctx.strokeStyle = '#8a6a3d';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(c.x + 4, c.y + 4, c.w - 8, c.h - 8);
-    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x + c.w, c.y + c.h); ctx.stroke();
-    ctx.fillStyle = '#d9b06a';
-    ctx.font = '700 11px system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('PASAR', c.x + c.w / 2, c.y + c.h / 2);
-  }
-  for (const r of [{ x: 540, y: 710, w: 80, h: 55 }, { x: 660, y: 710, w: 80, h: 55 }]) {
-    ctx.fillStyle = '#4a5563';
-    roundRect(ctx, r.x, r.y, r.w, r.h, 14); ctx.fill();
-    ctx.fillStyle = '#6b7787';
-    roundRect(ctx, r.x + 6, r.y + 5, r.w - 12, (r.h - 10) * 0.45, 10); ctx.fill();
-  }
-  drawCone(ctx, 180, 620, 0, 300, GUARD_FOV, [], '#ffe9a8', 0.16);
+  const def = LEVELS[0];
+  drawFloor(ctx, def);
+  drawProps(ctx, def, g);
+  // two patrol cones from level 1, frozen mid-sweep
+  const solids = solidsOf(def);
+  const cones = [
+    { x: def.guards[0].path[0][0], y: def.guards[0].path[0][1], dir: 0 },
+    { x: def.guards[1].path[0][0], y: def.guards[1].path[0][1], dir: Math.PI / 2 },
+  ];
+  for (const c of cones) drawCone(ctx, c.x, c.y, c.dir, GUARD_RANGE, GUARD_FOV, solids, '#f0ad2e', 0.3);
+  // sand veil: dims the world so the dark title text stays readable
+  ctx.fillStyle = 'rgba(231,217,184,.72)';
+  ctx.fillRect(0, 0, VIEW.w, VIEW.h);
   drawPerson(ctx, 180, 620, 0, '#3d5a8a', '#d9c27a', {});
-  label(ctx, 'BIMO', 180, 596, { size: 11, color: '#cfe0f5', align: 'center' });
+  label(ctx, 'BIMO', 180, 596, { size: 11, color: '#cfe0f5', align: 'center', bg: 'rgba(20,28,40,.8)' });
   drawPerson(ctx, 1080, 620, Math.PI, '#2e6fb2', '#ffd34d', {});
   label(ctx, 'YOU', 1080, 596, { size: 11, color: '#fff', align: 'center', bg: 'rgba(10,30,60,.8)' });
-  label(ctx, 'SHADOWS OF', VIEW.w / 2, 130, { size: 30, color: '#ffd678', align: 'center' });
-  label(ctx, 'PASAR SENJA', VIEW.w / 2, 180, { size: 56, color: '#fff', align: 'center' });
-  label(ctx, 'A STEALTH HEIST IN THREE INDONESIAN NIGHTS', VIEW.w / 2, 224, { size: 15, color: DIM, align: 'center', bold: false });
-  label(ctx, `${SCOPE.levels} LEVELS  ·  ${SCOPE.guards} GUARDS  ·  ${SCOPE.treasures} TREASURES  ·  1 DOG  ·  2 CAMERAS`, VIEW.w / 2, 268, { size: 15, color: '#ffd678', align: 'center' });
-  label(ctx, '1 PASAR MALAM   ·   2 MUSEUM PUSAKA   ·   3 PELABUHAN SENJA', VIEW.w / 2, 420, { size: 14, color: INK, align: 'center' });
-  label(ctx, 'STEAL THE TREASURE. REACH THE EXIT. NEVER BE SEEN.', VIEW.w / 2, 452, { size: 14, color: '#8fe8a8', align: 'center' });
-  label(ctx, 'CLICK OR PRESS ENTER TO BEGIN', VIEW.w / 2, 500, { size: 16, color: '#fff', align: 'center', bg: 'rgba(255,214,120,.18)' });
-  label(ctx, 'WASD move · SHIFT crouch · CLICK throw a coin · E grab loot', VIEW.w / 2, 540, { size: 13, color: DIM, align: 'center', bold: false });
-  label(ctx, 'GHOST BONUS +$500 — finish a level without ever being spotted', VIEW.w / 2, 568, { size: 13, color: '#ffd678', align: 'center', bold: false });
+  label(ctx, 'SHADOWS OF', VIEW.w / 2, 130, { size: 30, color: '#8a6a2f', align: 'center' });
+  label(ctx, 'PASAR SENJA', VIEW.w / 2, 180, { size: 56, color: '#33241a', align: 'center' });
+  label(ctx, 'A STEALTH HEIST IN THREE INDONESIAN NIGHTS', VIEW.w / 2, 224, { size: 15, color: '#6b5a44', align: 'center', bold: false });
+  label(ctx, `${SCOPE.levels} LEVELS  ·  ${SCOPE.guards} GUARDS  ·  ${SCOPE.treasures} TREASURES  ·  1 DOG  ·  2 CAMERAS`, VIEW.w / 2, 268, { size: 15, color: '#8a6a2f', align: 'center' });
+  label(ctx, '1 PASAR MALAM   ·   2 MUSEUM PUSAKA   ·   3 PELABUHAN SENJA', VIEW.w / 2, 420, { size: 14, color: '#4a3a28', align: 'center' });
+  label(ctx, 'STEAL THE TREASURE. REACH THE EXIT. NEVER BE SEEN.', VIEW.w / 2, 452, { size: 14, color: '#2f7a4a', align: 'center' });
+  label(ctx, 'CLICK OR PRESS ENTER TO BEGIN', VIEW.w / 2, 500, { size: 16, color: '#33241a', align: 'center', bg: 'rgba(180,140,60,.4)' });
+  label(ctx, 'WASD move · SHIFT crouch · CLICK throw a coin · E grab loot', VIEW.w / 2, 540, { size: 13, color: '#6b5a44', align: 'center', bold: false });
+  label(ctx, 'GHOST BONUS +$500 — finish a level without ever being spotted', VIEW.w / 2, 568, { size: 13, color: '#8a6a2f', align: 'center', bold: false });
 }
 
 function drawCaught(ctx, g) {
