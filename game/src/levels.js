@@ -44,6 +44,7 @@ export const LEVELS = [
   },
   {
     id: 2, name: 'MUSEUM PUSAKA', subtitle: 'The Heirloom Museum',
+    crateLabel: 'ARCA',
     treasure: { x: 640, y: 360, name: 'MAHKOTA SENJA', value: 1800, kind: 'crown' },
     valuables: [
       { x: 150, y: 150, name: 'Wayang Kulit', value: 300 },

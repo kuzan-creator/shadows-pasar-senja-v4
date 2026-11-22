@@ -206,7 +206,7 @@ function drawProps(ctx, def, g) {
     ctx.fillStyle = '#d9b06a';
     ctx.font = '700 11px system-ui, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('PASAR', c.x + c.w / 2, c.y + c.h / 2);
+    ctx.fillText(def.crateLabel || 'PASAR', c.x + c.w / 2, c.y + c.h / 2);
   }
   // walls — old plaster with a warm top edge
   for (const w of def.walls) {
@@ -426,8 +426,10 @@ function drawAnnotations(ctx, g) {
     label(ctx, '"What was that?"', gd.x + 185, gd.y - 30, { size: 15, color: '#ffc93d', align: 'center', bg: 'rgba(8,14,26,.85)' });
   }
   if (g.shot === 'alarm') {
+    // Narrow red bar: FIELD NOTES spans x 14..210, so the bar starts at
+    // x 240 and every legend line stays readable while it stays dramatic.
     ctx.fillStyle = 'rgba(120,10,8,.82)';
-    ctx.fillRect(0, 96, VIEW.w, 54);
+    roundRect(ctx, 240, 96, 800, 54, 8); ctx.fill();
     label(ctx, `SPOTTED BY ${g.caughtBy ? g.caughtBy.toUpperCase() : 'BIMO'} — RUN FOR SHADOW!`, VIEW.w / 2, 124, { size: 24, color: '#fff', align: 'center' });
     const gd = g.guards[0];
     label(ctx, '"Coming!"', gd.x, gd.y - 62, { size: 15, color: '#ff8a7a', align: 'center', bg: 'rgba(8,14,26,.85)' });
